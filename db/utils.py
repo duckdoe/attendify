@@ -100,7 +100,29 @@ def create_event(title, description, event_date, user_id):
         conn.commit()
 
 
-def get_events(title):
+def get_events():
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute("""SELECT * FROM events""")
+        events = cur.fetchall()
+
+    data = []
+    for event in events:
+        event_id, title, description, event_date, created_by, created_at = event
+        data.append(
+            {
+                "event_id": event_id,
+                "title": title,
+                "description": description,
+                "event_date": event_date,
+                "created_by": created_by,
+                "created_at": created_at,
+            }
+        )
+    return data
+
+
+def get_event(title):
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute("""SELECT * FROM events WHERE title=%s""", (title,))
