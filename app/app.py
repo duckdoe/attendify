@@ -152,25 +152,25 @@ def confirm_attendace(event_id):
     ss_id = flask.request.headers("Session-Id")
     otp = data["otp"]
     email = data["email"]
+    user = db.get_user(email=email)
+
+    if not ss_id:
+        return {"status": "Failure", "message": "No session id provided"}, 400
+
+    stored_ss_id = r.get(username)
+    if stored_ss_id != ss_id:
+        return {"status": "Failure", "message": "Invalid session id provided"}, 400
+
+    event = db.get_event(event_id)
+    if not event:
+        return {"status": "failure", "message": "Event does not exist"}, 404
+
     if otp:
-        user = db.get_user(email=email)
         if verify_otp(email, otp):
-            db.update_registration_attendance(True, user.get(user_id), event_id)
+            db.update_registration_attendance(True, user.get("user_id"), event_id)
     else:
         username = data["username"]
-        user_id = data["user_id"]
-
-        if not ss_id:
-            return {"status": "Failure", "message": "No session id provided"}, 400
-
-        stored_ss_id = r.get(username)
-        if stored_ss_id != ss_id:
-            return {"status": "Failure", "message": "Invalid session id provided"}, 400
-
-        event = db.get_event(event_id)
-        if not event:
-            return {"status": "failure", "message": "Event does not exist"}, 404
-
+        user_id = user.get("user_id")
         registered = db.get_registration()
         for r in registered:
             if user_id in r and event_id in r:

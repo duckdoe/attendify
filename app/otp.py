@@ -39,7 +39,7 @@ print(otp_is_same)
 
 
 def send_otp_email(email, otp):
-    body = f"This is your otp {otp} Dont share with anyone"
+    body = f"This is your otp {otp}. Dont share with anyone. Your OTP will last for only two minutes."
     message = MIMEText(body)
     message["Subject"] = "Otp"
     message["From"] = "fortunefoluso@gmail.com"
