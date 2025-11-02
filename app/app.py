@@ -1,9 +1,13 @@
 import uuid
-from sess import r
+import secrets
 import bcrypt
 import db.utils as db
 import flask
+from sess import r
 from app import app
+from otp import send_otp_email
+from otp import generate
+from otp import verify_otp
 
 
 @app.post("/signup")
@@ -72,7 +76,28 @@ def events():
         description = data["description"]
         event_date = data["event_date"]
 
+        _, role = stored_ss_id.split(" ")
+        if role != "admin":
+            return (
+                flask.make_response(
+                    flask.jsonify(
+                        {
+                            "status": "Forbidden",
+                            "message": "Not enough permissions to create an event",
+                        }
+                    )
+                ),
+                403,
+            )
+
         db.create_event(title, description, event_date, user["user_id"])
+        event = db.get_event(title=title)
+
+        return {
+            "status": "success",
+            "message": "Successfully created an event",
+            "event_id": event.get("event_id"),
+        }
 
     events = db.get_events()
 
@@ -87,3 +112,72 @@ def events():
         "message": "No events were retrieved",
         "events": events,
     }
+
+
+@app.post("/register/<event_id>")
+def register(event_id):
+    event = db.get_event(event_id=event_id)
+    data = flask.request.get_json()
+    ss_id = flask.request.headers.get("Session-Id")
+    username = data.get("username")
+
+    user = db.get_user(username)
+
+    if not event:
+        return {"status": "Not found", "message": "Event not found"}, 404
+    if not ss_id:
+        return {
+            "status": "Failure",
+            "message": "No session id provided failed to authenticate",
+        }, 400
+
+    stored_ss_id = r.get(username)
+    if stored_ss_id != ss_id:
+        return {"status": "failure", "message": "Invalid session id provided"}, 400
+
+    registrations = db.get_registration()
+    for registration in registrations:
+        if event_id in registration and user.get("user_id") in registration:
+            return {
+                "status": "conflict",
+                "message": "User has already registered for this event",
+            }, 409
+
+    db.insert_into_registrations(event_id, user.get("user_id"))
+
+
+@app.post("confirm-attendance/<event_id>")
+def confirm_attendace(event_id):
+    data = flask.request.get_json()
+    ss_id = flask.request.headers("Session-Id")
+    otp = data["otp"]
+    email = data["email"]
+    if otp:
+        user = db.get_user(email=email)
+        if verify_otp(email, otp):
+            db.update_registration_attendance(True, user.get(user_id), event_id)
+    else:
+        username = data["username"]
+        user_id = data["user_id"]
+
+        if not ss_id:
+            return {"status": "Failure", "message": "No session id provided"}, 400
+
+        stored_ss_id = r.get(username)
+        if stored_ss_id != ss_id:
+            return {"status": "Failure", "message": "Invalid session id provided"}, 400
+
+        event = db.get_event(event_id)
+        if not event:
+            return {"status": "failure", "message": "Event does not exist"}, 404
+
+        registered = db.get_registration()
+        for r in registered:
+            if user_id in r and event_id in r:
+                otp = generate(email)
+                send_otp_email(email)
+
+        return {
+            "status": "failure",
+            "message": "User did no register for event",
+        }, 404

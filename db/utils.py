@@ -122,14 +122,16 @@ def get_events():
     return data
 
 
-def get_event(title):
+def get_event(title=None, event_id=None):
     with connect_db() as conn:
         cur = conn.cursor()
-        cur.execute("""SELECT * FROM events WHERE title=%s""", (title,))
+        cur.execute(
+            """SELECT * FROM events WHERE title=%s or event_id=%s""", (title, event_id)
+        )
         data = cur.fetchone()
     event_id, title, description, event_date, created_by, created_at = data
     return {
-        "event_ud": event_id,
+        "event_id": event_id,
         "title": title,
         "description": description,
         "event_date": event_date,
