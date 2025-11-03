@@ -12,6 +12,24 @@ from .otp import verify_otp
 
 @app.post("/signup")
 def signup():
+    """
+    Signup route for app
+
+    Gets data from the client such as
+
+    name: str
+
+    username: str
+
+    email: str
+
+    password: str
+
+    role: str | None
+
+    if role is not giving or is a falsy value the database function will handle that
+    """
+
     data = flask.request.get_json()
 
     name = data["name"]
@@ -31,6 +49,13 @@ def signup():
 
 @app.post("/login")
 def login():
+    """
+    A login route for the app
+
+    Recieves data from the client
+
+    returns randomly generated session id
+    """
     data = flask.request.get_json()
     username = data["username"]
     email = data["email"] or None

@@ -5,6 +5,16 @@ salt = bcrypt.gensalt()
 
 
 def get_user(username=None, email=None):
+    """
+    A database utility function used to get a specific user by either their username or email
+
+
+    :params: username:str | None
+    :params: email: str | None
+
+    :returns: A dictionary dict[str, Any]
+    """
+
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -30,6 +40,17 @@ def get_user(username=None, email=None):
 
 
 def get_users(role=None, event_id=None):
+    """
+    A database utility function to get a user based on their role or event_id, this is used to see how much people have registered for an event
+
+    if nothing is entered for both then no specifity will be added during search
+
+    :params: role: str | None
+    :params: event_id: UUID | None
+
+    returns: list[dict[str, Any]]
+
+    """
     if not role and not event_id:
         with connect_db() as conn:
             cur = conn.cursor()
@@ -63,6 +84,21 @@ def get_users(role=None, event_id=None):
 
 
 def set_users(name, username, email, password, role=None):
+    """
+    A database utility function for creating users
+
+    :params: name: str
+    :params: username: str
+    :params: email: str
+    :params: password: str
+    :params: role: str | None
+
+    when the role is not specified or is given a falsy value the database defaults to 'user' for the role column
+
+    returns
+    None
+    """
+
     hashed_pw = bcrypt.hashpw(password.encode(), salt).decode()
 
     if role:
@@ -85,6 +121,13 @@ def set_users(name, username, email, password, role=None):
 
 
 def del_user(username):
+    """
+    A database utility function to delete/remove a user from the database
+
+    :params: username: str
+
+    returns None
+    """
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute("""DELETE FROM users WHERE username=%s""", (username,))
@@ -92,6 +135,18 @@ def del_user(username):
 
 
 def create_event(title, description, event_date, user_id):
+    """
+    A database utiliy function to create an event, events can only be created by admins
+
+    :params: title: str
+    :params: description: str
+    :params: event_date: str
+    :params: user_id: str
+
+    The user_id and even_id parameters are needed for querying the database later
+
+    returns None
+    """
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -102,6 +157,14 @@ def create_event(title, description, event_date, user_id):
 
 
 def get_events():
+    """
+    A database utility function that returns all the events created over time
+
+    This does not need any parameters as we need all the events created by different admins
+
+    returns list[dict[str, Any]]
+    """
+
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute("""SELECT * FROM events""")
@@ -124,6 +187,14 @@ def get_events():
 
 
 def get_event(title=None, event_id=None):
+    """
+    A database utility function that gets a certain event from the database either by the title or the event_id
+
+    :params: title: str | None
+    :params: event_id: str | None
+
+    returns dict[str, Any]
+    """
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -141,7 +212,17 @@ def get_event(title=None, event_id=None):
     }
 
 
-def delete_events(event_id):
+def delete_event(event_id):
+    """
+    A database utility for deleting an event
+
+    This can implemeted when the time for the event/program as ended and we dont need anything from it again
+
+    :params: event_id: str | None
+
+    returns None
+    """
+
     with connect_db as conn:
         cur = conn.cursor()
         cur.execute("""DELETE FROM events WHERE event_id=%s""", (event_id,))
@@ -149,6 +230,14 @@ def delete_events(event_id):
 
 
 def get_registration():
+    """
+    A database utility used for getting the registered events of all users
+
+    Again no need for parameters as we need everything
+
+    returns None
+    """
+
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute("""SELECT * FROM registrations""")
@@ -172,7 +261,46 @@ def get_registration():
     return registrations
 
 
+# TODO Implement a way to get a specific event a user has registered for, possible params would be event_id and user_id
+
+
+def get_registered(user_id, event_id):
+    """
+    A database utility function created to help with the retrival of a particular event a particular user is registered to
+
+    :params: user_id: str
+    :params: event_id: str
+
+    returns dict[str, Any] | None
+    """
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+                    SELECT * FROM registrations WHERE event_id=%s AND user_id=%s
+                    """
+        )
+        data = cur.fetchone()
+
+    if data:
+        reg_id, event_id, user_id, attended, registered_at = data
+        return {
+            "registration_id": reg_id,
+            "event_id": event_id,
+            "user_id": user_id,
+            "attended": attended,
+            "registered_at": registered_at,
+        }
+    return None
+
+
 def insert_into_registrations(event_id, user_id):
+    """
+    A database utility function that is used to create/record events users register for
+
+    :params: event_id: str
+    :params: user_id
+    """
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -183,6 +311,13 @@ def insert_into_registrations(event_id, user_id):
 
 
 def update_registration_attendance(attended, user_id, event_id):
+    """
+    A database utility function that is used to help mark the attendace of a user True
+
+    :params: attended: bool
+    :params: user_id: str
+    :params: event_id: str
+    """
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
