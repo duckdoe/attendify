@@ -17,15 +17,15 @@ def signup():
 
     Gets data from the client such as
 
-    name: str
+    :name: str
 
-    username: str
+    :username: str
 
-    email: str
+    :email: str
 
-    password: str
+    :password: str
 
-    role: str | None
+    :role: str | None
 
     if role is not giving or is a falsy value the database function will handle that
     """
@@ -84,6 +84,18 @@ def login():
 
 @app.route("/events", methods=["GET", "POST"])
 def events():
+    """
+    The events api of the route
+
+    This route accepts both a post and get request
+
+    The POST request is used for creating a new event
+
+    :restrictions: only admins can create events
+
+
+    The GET request is used for retereiving all the events created
+    """
 
     if flask.request.method == "POST":
         ss_id = flask.request.headers.get("Session-Id")
@@ -155,6 +167,10 @@ def events():
 
 @app.post("/register/<event_id>")
 def register(event_id):
+    """
+    This route is used to register a user for an event
+    """
+
     event = db.get_event(event_id=event_id)
     data = flask.request.get_json()
     ss_id = flask.request.headers.get("Session-Id")
@@ -190,6 +206,11 @@ def register(event_id):
 
 @app.post("/confirm-attendance/<event_id>")
 def confirm_attendace(event_id):
+    """
+    This route is used to confirm the attendance of an event
+
+    :params: event_id: str
+    """
     data = flask.request.get_json()
     ss_id = flask.request.headers("Session-Id")
     otp = data["otp"]
