@@ -1,5 +1,5 @@
 import bcrypt
-from conn import connect_db
+from .conn import connect_db
 
 salt = bcrypt.gensalt()
 
@@ -73,12 +73,13 @@ def set_users(name, username, email, password, role=None):
                 (name, username, email, hashed_pw, role),
             )
             conn.commit()
+            return
 
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            """INSERT INTO users (name, username, email, password, role) VALUES(%s,%s,%s,%s)""",
-            (name, username, password),
+            """INSERT INTO users (name, username, email, password) VALUES(%s,%s,%s,%s)""",
+            (name, username, email, hashed_pw),
         )
         conn.commit()
 
@@ -94,7 +95,7 @@ def create_event(title, description, event_date, user_id):
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            """INSERT INTO events (title, description, event_date, user_id)""",
+            """INSERT INTO events (title, description, event_date, created_by) VALUES (%s, %s, %s,%s)""",
             (title, description, event_date, user_id),
         )
         conn.commit()

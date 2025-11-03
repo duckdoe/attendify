@@ -24,14 +24,14 @@ def migrate():
     migrated = False
     for file in b:
         if file not in a and file.endswith(".sql"):
-            with open(files, "a") as f:
-                f.write(f"{file} ")
             with open(os.path.join(dir, file)) as f:
                 query = f.read()
             with connect_db() as conn:
                 cur = conn.cursor()
                 cur.execute(query)
                 conn.commit()
+            with open(files, "a") as f:
+                f.write(f"{file} ")
             print(f". Migrated {file} successfully")
 
             migrated = True

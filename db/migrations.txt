@@ -1,1 +1,1 @@
-001_schema.sql 
+001_schema.sql 002_scheam.sql 
