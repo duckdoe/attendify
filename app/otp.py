@@ -31,12 +31,6 @@ def verify_otp(email, otp):
 
 email = "fortunefoluso@gmail.com"
 
-otp = generate(email)
-print(otp)
-
-otp_is_same = verify_otp(email, otp)
-print(otp_is_same)
-
 
 def send_otp_email(email, otp):
     body = f"This is your otp {otp}. Dont share with anyone. Your OTP will last for only two minutes."
@@ -49,6 +43,3 @@ def send_otp_email(email, otp):
         server.starttls()
         server.login("fortunefoluso@gmail.com", "mvnc vewx phte egyj")
         server.sendmail(message["From"], message["To"], message.as_string())
-
-
-send_otp_email("fortunefoluso@gmail.com", otp)

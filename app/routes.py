@@ -3,11 +3,11 @@ import secrets
 import bcrypt
 import db.utils as db
 import flask
-from sess import r
+from .sess import r
 from app import app
-from otp import send_otp_email
-from otp import generate
-from otp import verify_otp
+from .otp import send_otp_email
+from .otp import generate
+from .otp import verify_otp
 
 
 @app.post("/signup")
@@ -18,7 +18,10 @@ def signup():
     username = data["username"]
     email = data["email"]
     password = data["password"]
-    role = data["password"] or None
+    role = data["role"] or None
+
+    if not all([name, username, email, password]):
+        return {"status": "failure", "message": "Not all information provided"}, 400
 
     db.set_users(name, username, email, password, role)
     return flask.make_response(
@@ -76,7 +79,7 @@ def events():
         description = data["description"]
         event_date = data["event_date"]
 
-        _, role = stored_ss_id.split(" ")
+        _, role = stored_ss_id.split("|")
         if role != "admin":
             return (
                 flask.make_response(
@@ -110,7 +113,6 @@ def events():
     return {
         "status": "success",
         "message": "No events were retrieved",
-        "events": events,
     }
 
 
@@ -146,7 +148,7 @@ def register(event_id):
     db.insert_into_registrations(event_id, user.get("user_id"))
 
 
-@app.post("confirm-attendance/<event_id>")
+@app.post("/confirm-attendance/<event_id>")
 def confirm_attendace(event_id):
     data = flask.request.get_json()
     ss_id = flask.request.headers("Session-Id")
