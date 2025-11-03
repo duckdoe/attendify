@@ -38,7 +38,10 @@ def login():
 
     user = db.get_user(username, email)
     if not user:
-        return {"status": "not found", "message": "User not found"}, 404
+        return {
+            "status": "not found",
+            "message": "User not found or does not eixst",
+        }, 404
 
     is_same_pw = bcrypt.checkpw(password.encode(), user["password"].encode())
     if not is_same_pw:
@@ -63,17 +66,26 @@ def events():
 
         user = db.get_user(data["username"])
         if not user:
-            return {"status": "Not found", "message": "User not found"}, 404
+            return {
+                "status": "Not found",
+                "message": "User not found or does not exist",
+            }, 404
 
         if not ss_id:
-            return {"status": "failure", "message": "No session id provided"}, 400
+            return {
+                "status": "failure",
+                "message": "No session id provided failed to authenticate",
+            }, 400
 
         stored_ss_id = r.get(data["username"])
         if not stored_ss_id:
-            return {"status": "Not allowed", "message": "User is not logged In"}, 403
+            return {"status": "Not allowed", "message": ""}, 403
 
         if stored_ss_id != ss_id:
-            return {"status": "failure", "message": "Invalid session id provided"}, 400
+            return {
+                "status": "failure",
+                "message": "Invalid session id provided failed to authenticate",
+            }, 400
 
         title = data["title"]
         description = data["description"]
@@ -86,7 +98,7 @@ def events():
                     flask.jsonify(
                         {
                             "status": "Forbidden",
-                            "message": "Not enough permissions to create an event",
+                            "message": "Not enough permissions to create an event, need admin priviledges",
                         }
                     )
                 ),
@@ -98,7 +110,7 @@ def events():
 
         return {
             "status": "success",
-            "message": "Successfully created an event",
+            "message": "Event created succesffully",
             "event_id": event.get("event_id"),
         }
 
@@ -107,12 +119,12 @@ def events():
     if events:
         return {
             "status": "success",
-            "message": "successfully retrieved all events",
+            "message": "Event created successfully",
             "events": events,
         }
     return {
         "status": "success",
-        "message": "No events were retrieved",
+        "message": "No events were retrieved, try creating one?",
     }
 
 
@@ -135,7 +147,10 @@ def register(event_id):
 
     stored_ss_id = r.get(username)
     if stored_ss_id != ss_id:
-        return {"status": "failure", "message": "Invalid session id provided"}, 400
+        return {
+            "status": "failure",
+            "message": "Invalid session id provided failed to authenticate",
+        }, 400
 
     registrations = db.get_registration()
     for registration in registrations:
@@ -157,11 +172,17 @@ def confirm_attendace(event_id):
     user = db.get_user(email=email)
 
     if not ss_id:
-        return {"status": "Failure", "message": "No session id provided"}, 400
+        return {
+            "status": "Failure",
+            "message": "No session id provided failed to authenticate",
+        }, 400
 
     stored_ss_id = r.get(username)
     if stored_ss_id != ss_id:
-        return {"status": "Failure", "message": "Invalid session id provided"}, 400
+        return {
+            "status": "Failure",
+            "message": "Invalid session id provided failed to authenticate",
+        }, 400
 
     event = db.get_event(event_id)
     if not event:
@@ -181,5 +202,5 @@ def confirm_attendace(event_id):
 
         return {
             "status": "failure",
-            "message": "User did no register for event",
+            "message": "User did not register for event",
         }, 404
