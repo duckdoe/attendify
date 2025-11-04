@@ -93,7 +93,6 @@ def events():
 
     :restrictions: only admins can create events
 
-
     The GET request is used for retereiving all the events created
     """
 
@@ -193,13 +192,12 @@ def register(event_id):
             "message": "Invalid session id provided failed to authenticate",
         }, 400
 
-    registrations = db.get_registration()
-    for registration in registrations:
-        if event_id in registration and user.get("user_id") in registration:
-            return {
-                "status": "conflict",
-                "message": "User has already registered for this event",
-            }, 409
+    registered = db.get_registered(user_id=user["user_id"], event_id=event_id)
+    if registered:
+        return {
+            "status": "conflict",
+            "message": "User has already registered for this event",
+        }, 409
 
     db.insert_into_registrations(event_id, user.get("user_id"))
 
