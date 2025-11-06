@@ -2,7 +2,7 @@ import requests
 import json
 from pprint import pprint
 
-url = "http://localhost:5000/register/e6359998-3790-452d-bcef-4e6cd33f87b7"
+url = " http://localhost:5001/confirm-attendance/af49db6e-ed91-4aed-a63a-4af87dc9282c/verify-otp"
 
 # url = "http://localhost:5000/events"
 
@@ -15,16 +15,18 @@ url = "http://localhost:5000/register/e6359998-3790-452d-bcef-4e6cd33f87b7"
 # }
 
 payload = {
-    "username": "duckdoe",
-    # "email": "fortunefoluso23@gmail.com",
+    # "username": "duckdoe",
+    "email": "fortunefoluso23@gmail.com",
+    "otp": "95543",
     # "password": "duckdb123",
 }
 
+
 headers = {
     "Content-Type": "application/json",
-    "Session-Id": "d597b1f2-d4b6-4ac8-a417-fe3aeb15f318|user",
+    "Session-Id": "04843e95-3498-4157-91d2-65df6d107457|admin",
 }
 
-res = requests.post(url, data=json.dumps(payload), headers=headers)
+res = requests.put(url, data=json.dumps(payload), headers=headers)
 # res = requests.get(url)
 pprint(res.json())

@@ -143,7 +143,7 @@ def create_event(title, description, event_date, user_id):
     :params: event_date: str
     :params: user_id: str
 
-    The user_id and even_id parameters are needed for querying the database later
+    The user_id and event_id parameters are needed for querying the database later
 
     returns None
     """
@@ -201,15 +201,17 @@ def get_event(title=None, event_id=None):
             """SELECT * FROM events WHERE title=%s or event_id=%s""", (title, event_id)
         )
         data = cur.fetchone()
-    event_id, title, description, event_date, created_by, created_at = data
-    return {
-        "event_id": event_id,
-        "title": title,
-        "description": description,
-        "event_date": event_date,
-        "created_by": created_by,
-        "created_at": created_at,
-    }
+    if data:
+        event_id, title, description, event_date, created_by, created_at = data
+        return {
+            "event_id": event_id,
+            "title": title,
+            "description": description,
+            "event_date": event_date,
+            "created_by": created_by,
+            "created_at": created_at,
+        }
+    return None
 
 
 def delete_event(event_id):
@@ -278,7 +280,8 @@ def get_registered(user_id, event_id):
         cur.execute(
             """
                     SELECT * FROM registrations WHERE event_id=%s AND user_id=%s
-                    """
+                    """,
+            (event_id, user_id),
         )
         data = cur.fetchone()
 
@@ -291,6 +294,43 @@ def get_registered(user_id, event_id):
             "attended": attended,
             "registered_at": registered_at,
         }
+    return None
+
+
+def get_single_registered(user_id=None, event_id=None):
+    """
+    A database utility function created to help with the retrival of a particular event a particular user is registered to
+
+    :params: user_id: str
+    :params: event_id: str
+
+    returns dict[str, Any] | None
+    """
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+                    SELECT * FROM registrations WHERE event_id=%s OR user_id=%s
+                    """,
+            (event_id, user_id),
+        )
+        data = cur.fetchall()
+
+    registered = []
+    if data:
+        for d in data:
+            reg_id, event_id, user_id, attended, registered_at = d
+            registered.append(
+                {
+                    "registration_id": reg_id,
+                    "event_id": event_id,
+                    "user_id": user_id,
+                    "attended": attended,
+                    "registered_at": registered_at,
+                }
+            )
+        return registered
+
     return None
 
 
@@ -315,8 +355,8 @@ def update_registration_attendance(attended, user_id, event_id):
     A database utility function that is used to help mark the attendace of a user True
 
     :params: attended: bool
-    :params: user_id: str
-    :params: event_id: str
+    :params: user_id: uuid
+    :params: event_id: uuid
     """
     with connect_db() as conn:
         cur = conn.cursor()
