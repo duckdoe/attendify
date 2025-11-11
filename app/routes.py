@@ -7,6 +7,8 @@ from app import app
 from .otp import send_otp_email
 from .otp import generate
 from .otp import verify_otp
+from .otp import send_login_alert
+from .otp import send_registration_email
 
 
 @app.post("/signup")
@@ -71,6 +73,9 @@ def login():
 
     ss_id = f"{uuid.uuid4()}|{user['role']}"
     r.setex(user["username"], 3600, ss_id)
+
+    ip = flask.request.remote_addr
+    send_login_alert(email, ip)
 
     return {
         "status": "success",
@@ -191,6 +196,14 @@ def register(event_id):
         }, 409
 
     db.insert_into_registrations(event_id, user.get("user_id"))
+
+    admins = db.get_admins()
+    for admin in admins:
+        send_registration_email(
+            admin["email"],
+            username,
+            event["title"],
+        )
     return {"status": "success", "message": "User registered for event successful"}, 201
 
 

@@ -5,6 +5,8 @@ import base64
 import hashlib
 import smtplib
 import secrets
+import requests
+from datetime import datetime
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
 
@@ -75,3 +77,53 @@ def send_otp_email(email, otp):
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(message["From"], message["To"], message.as_string())
+
+
+def send_email(email, body, subject):
+    message = MIMEText(body)
+    message["Subject"] = subject
+    message["From"] = "fortunefoluso@gmail.com"
+    message["To"] = email
+
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login("fortunefoluso@gmail.com", "mvnc vewx phte egyj")
+        server.sendmail(message["From"], message["To"], message.as_string())
+
+    return True
+
+
+def get_address(ip):
+    url = f"https://ipapi.co/{ip}/json"
+    res = requests.get(url)
+
+    if res.status_code != 200:
+        return None
+
+    res = res.json()
+
+    city = res.get("city")
+    region = res.get("region")
+    country = res.get("country_name")
+
+    address = f"Near {city}, {region}, {country}"
+
+    return address
+
+
+# send_otp_email("fortunefoluso@gmail.com", otp)
+def send_login_alert(email, ip):
+    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    address = get_address(ip)
+
+    body = f"A new login was detected on your account from {address} at {timestamp}"
+    subject = "Login Alert Notification"
+
+    send_email(email, body, subject)
+
+
+def send_registration_email(email, user, event):
+    body = f"{user} just registered for {event} event."
+    subject = "Registered for event"
+
+    send_email(email, body, subject)
