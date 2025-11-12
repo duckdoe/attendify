@@ -6,6 +6,10 @@ url = " http://localhost:5000/register/c2e689c5-c5cd-4de9-88e3-bf99b1f40a85"
 
 # url = "http://localhost:5000/events"
 
+payload = {
+    "username": "duckdbuser",
+    "password": "duckdb123",
+}
 
 # payload = {
 #     "username": "duckdoe",

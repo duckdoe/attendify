@@ -202,12 +202,15 @@ def get_event(title=None, event_id=None):
         )
         data = cur.fetchone()
     if data:
-        event_id, title, description, event_date, created_by, created_at = data
+        event_id, title, description, event_date, created_by, created_at, end_date = (
+            data
+        )
         return {
             "event_id": event_id,
             "title": title,
             "description": description,
             "event_date": event_date,
+            "end_date": end_date,
             "created_by": created_by,
             "created_at": created_at,
         }
@@ -363,5 +366,58 @@ def update_registration_attendance(attended, user_id, event_id):
         cur.execute(
             """UPDATE registrations SET attended=%s WHERE user_id=%s and event_id=%s""",
             (attended, user_id, event_id),
+        )
+        conn.commit()
+
+
+def get_admins():
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute("""SELECT * FROM users WHERE role='admin'""")
+        users = cur.fetchall()
+
+    data = []
+    if users:
+        for user in users:
+            data.append(
+                {
+                    "user_id": user[0],
+                    "name": user[1],
+                    "username": user[2],
+                    "email": user[3],
+                    "password": user[4],
+                    "role": user[5],
+                    "created_at": user[6],
+                }
+            )
+
+    return data
+
+
+def set_verification(user_id, event_id, document_url, image_url):
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO verification (user_id, event_id, document_url, image_url) VALUES (%s, %s, %s, %s)""",
+            (user_id, event_id, document_url, image_url),
+        )
+        conn.commit()
+
+
+def update_verification(id):
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """UPDATE verification SET approved=True WHERE verification_id=%s""", (id,)
+        )
+        conn.commit()
+
+
+def add_points(points, user_id):
+    with connect_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """UPDATE users SET points= points + %s WHERE user_id=%s""",
+            (points, user_id),
         )
         conn.commit()

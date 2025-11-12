@@ -1,7 +1,10 @@
+import os
 import uuid
 import bcrypt
 import db.utils as db
 import flask
+from datetime import datetime
+from werkzeug.utils import secure_filename
 from .sess import r
 from app import app
 from .otp import send_otp_email
@@ -9,6 +12,10 @@ from .otp import generate
 from .otp import verify_otp
 from .otp import send_login_alert
 from .otp import send_registration_email
+
+
+app.config["UPLOADS_FOLDER"] = "uploads"
+app.config["ALLOWED_FILES"] = ["docx", "pdf", "png", "jpg", "jpeg"]
 
 
 @app.post("/signup")
@@ -286,9 +293,31 @@ def verify_otp_route(event_id):
         db.update_registration_attendance(
             attended=True, user_id=user.get("user_id"), event_id=event_id
         )
+
+        current_time = datetime.now()
+
+        def get_points(current_time, start_time, end_time):
+
+            if (
+                (type(current_time) != datetime)
+                and type(start_time) != datetime
+                and type(end_time) != datetime
+            ):
+                raise TypeError("Invalid object provided need a datetime object")
+
+            total_time = int((start_time - end_time).total_seconds())
+            remaining_time = int((current_time - end_time).total_seconds())
+
+            points = remaining_time // total_time * 10
+            return points
+
+        points = get_points(current_time, event.get("event_date", "end_date"))
+        db.add_points(points, user.get("user_id"))
+
         return {
             "status": "success",
             "message": "Otp verification successful attendance updated",
+            "points": f"{points} where added",
         }, 200
     else:
         return {
@@ -331,6 +360,12 @@ def confirm_attendace(event_id):
     user_id = user.get("user_id")
     registered = db.get_registered(user_id, event_id)
 
+    current_time = datetime.now()
+    if current_time > event.get("end_date"):
+        return {
+            "message": "Event has already ended you need proof to confirm your attendance"
+        }, 409
+
     if registered:
         otp = generate(email)
         send_otp_email(email, otp)
@@ -343,3 +378,73 @@ def confirm_attendace(event_id):
         "status": "failure",
         "message": "User did not register for event",
     }, 404
+
+
+@app.route("/confirm-attendance/<event_id>/verify-attendance")
+def verify_attendance(event_id):
+    data = flask.request.get_json()
+    ss_id = flask.request.headers.get("Session-Id")
+    email = data["email"]
+    user = db.get_user(email=email)
+
+    username = user["username"]
+
+    if not ss_id:
+        return {
+            "status": "Failure",
+            "message": "No session id provided failed to authenticate",
+        }, 400
+
+    stored_ss_id = r.get(username)
+    if stored_ss_id != ss_id:
+        return {
+            "status": "Failure",
+            "message": "Invalid session id provided failed to authenticate",
+        }, 400
+
+    event = db.get_event(event_id=event_id)
+    if not event:
+        return {"status": "failure", "message": "Event does not exist"}, 404
+
+    if flask.request.files:
+        if "document" not in flask.request.files and "image" not in flask.request.files:
+            return {"message": "Missing requirements"}, 400
+
+        document = flask.request.files["document"]
+        image = flask.request.files["image"]
+
+        if document.filename == "" or image.filename == "":
+            return {"error": "No selected file"}, 400
+
+        files = []
+
+        if document.filename.endswith(tuple(app.config["ALLOWED_FILES"])):
+            filename = secure_filename(document.filename)
+
+            full_path = os.path.join(
+                os.getcwd,
+                app.config["UPLOADS_FOLDER"],
+                "documents",
+                filename,
+            )
+            document.save(full_path)
+
+            file_url = flask.url_for("uploaded_file", filename=filename, _external=True)
+            files.append(file_url)
+
+        if image.filename.endswith(tuple(app.config["ALLOWED_FILES"])):
+            filename = secure_filename(image.filename)
+
+            full_path = os.path.join(
+                os.getcwd, app.config["UPLOADS_FOLDER"], "images", filename
+            )
+            image.save(full_path)
+
+            file_url = flask.url_for("uploaded_file", filename=filename, _external=True)
+            files.append(file_url)
+
+        document_url, image_url = files
+        db.set_verification(
+            user.get("user_id"), event.get("event_id"), document_url, image_url
+        )
+        return {"message": "Images sent verification is ongoing"}, 201
