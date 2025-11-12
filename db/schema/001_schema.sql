@@ -12,7 +12,8 @@ CREATE TABLE events (
     event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(150) NOT NULL,
     description TEXT,
-    event_date DATE NOT NULL,
+    event_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP NOT NULL,
     created_by UUID REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT now()
 );
@@ -23,4 +24,12 @@ CREATE TABLE registrations (
     user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
     attended BOOLEAN DEFAULT FALSE,
     registered_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE verification (
+    verification_id UUID PRIMARY KEY DEFAULT gen_random_uuid().
+    event_id UUID REFERENCES events(event_id) NOT NULL,
+    user_id UUID REFERENCES users(user_id) NOT NULL,
+    document_url TEXT NOT NULL,
+    image_url TEXT NOT NULL
 );
