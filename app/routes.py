@@ -14,7 +14,7 @@ from .otp import send_login_alert
 from .otp import send_registration_email
 
 
-app.config["UPLOADS_FOLDER"] = "uploads"
+app.config["UPLOADS_FOLDER"] = "app\\uploads"
 app.config["ALLOWED_FILES"] = ["docx", "pdf", "png", "jpg", "jpeg"]
 
 
@@ -40,14 +40,14 @@ def signup():
 
     data = flask.request.get_json()
 
-    name = data["name"]
-    username = data["username"]
-    email = data["email"]
-    password = data["password"]
-    role = data["role"] or None
+    name = data.get("name")
+    username = data.get("username")
+    email = data.get("email")
+    password = data.get("password")
+    role = data.get("role")
 
     if not all([name, username, email, password]):
-        return {"status": "failure", "message": "Not all information provided"}, 400
+        return {"status": "failure", "message": "Missing field in payload"}, 400
 
     db.set_users(name, username, email, password, role)
     return {"status": "success", "message": "user signup successful!"}, 201
@@ -63,9 +63,18 @@ def login():
     :returns: randomly generated session id
     """
     data = flask.request.get_json()
-    username = data["username"]
-    email = data["email"] or None
-    password = data["password"]
+    username = data.get("username")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not all(
+        [
+            username,
+            username or email,
+            password,
+        ]
+    ):
+        return {"message": "Missing field in payload"}, 400
 
     user = db.get_user(username, email)
     if not user:
@@ -79,10 +88,19 @@ def login():
         return {"status": "error", "message": "Invalid password entered"}, 400
 
     ss_id = f"{uuid.uuid4()}|{user['role']}"
-    r.setex(user["username"], 3600, ss_id)
+    try:
+        r.setex(user["username"], 3600, ss_id)
+    except ConnectionError:
+        return {
+            "message": "Network error, make sure you have a stable internet connectioon and try again"
+        }, 400
+    except TimeoutError:
+        return (
+            {"message": "Recieved a timeout error while trying to connect to redis"},
+        )
 
     ip = flask.request.remote_addr
-    send_login_alert(email, ip)
+    send_login_alert(email or user.get("email"), ip)
 
     return {
         "status": "success",
@@ -109,7 +127,11 @@ def events():
         ss_id = flask.request.headers.get("Session-Id")
         data = flask.request.get_json()
 
-        user = db.get_user(data["username"])
+        username = data.get("username")
+        if not username:
+            return {"Missing field in payload"}, 400
+
+        user = db.get_user(username)
         if not user:
             return {
                 "status": "Not found",
@@ -132,9 +154,13 @@ def events():
                 "message": "Invalid session id provided failed to authenticate",
             }, 400
 
-        title = data["title"]
-        description = data["description"]
-        event_date = data["event_date"]
+        title = data.get("title")
+        description = data.get("description")
+        event_date = data.get("event_date")
+        end_date = data.get("end_date")
+
+        if not all([title, description, event_date]):
+            return {"message": "Missing field in payload"}, 400
 
         _, role = stored_ss_id.split("|")
         if role != "admin":
@@ -143,7 +169,7 @@ def events():
                 "message": "Not enough permissions to create an event, need admin priviledges",
             }, 403
 
-        db.create_event(title, description, event_date, user["user_id"])
+        db.create_event(title, description, event_date, end_date, user["user_id"])
         event = db.get_event(title=title)
 
         return {
@@ -177,6 +203,9 @@ def register(event_id):
     data = flask.request.get_json()
     ss_id = flask.request.headers.get("Session-Id")
     username = data.get("username")
+
+    if not username:
+        return {"message": "Missing field in payload"}, 400
 
     user = db.get_user(username)
 
@@ -263,9 +292,12 @@ def verify_otp_route(event_id):
     """
     data = flask.request.get_json()
     ss_id = flask.request.headers.get("Session-Id")
-    email = data["email"]
-    otp = data["otp"]
+    email = data.get("email")
+    otp = data.get("otp")
     user = db.get_user(email=email)
+
+    if not all(email, otp):
+        return {"message": "Missing field in payload"}, 400
 
     username = user.get("username")
 
@@ -335,8 +367,11 @@ def confirm_attendace(event_id):
     """
     data = flask.request.get_json()
     ss_id = flask.request.headers.get("Session-Id")
-    email = data["email"]
+    email = data.get("email")
     user = db.get_user(email=email)
+
+    if not email:
+        return {"message": "Missing field in payload"}, 400
 
     username = user["username"]
 
@@ -380,12 +415,14 @@ def confirm_attendace(event_id):
     }, 404
 
 
-@app.route("/confirm-attendance/<event_id>/verify-attendance")
+@app.post("/confirm-attendance/<event_id>/upload")
 def verify_attendance(event_id):
-    data = flask.request.get_json()
     ss_id = flask.request.headers.get("Session-Id")
-    email = data["email"]
+    email = flask.request.form.get("email")
     user = db.get_user(email=email)
+
+    if not email:
+        return {"message": "Missing field in payload"}, 400
 
     username = user["username"]
 
@@ -422,7 +459,7 @@ def verify_attendance(event_id):
             filename = secure_filename(document.filename)
 
             full_path = os.path.join(
-                os.getcwd,
+                os.getcwd(),
                 app.config["UPLOADS_FOLDER"],
                 "documents",
                 filename,
@@ -436,7 +473,10 @@ def verify_attendance(event_id):
             filename = secure_filename(image.filename)
 
             full_path = os.path.join(
-                os.getcwd, app.config["UPLOADS_FOLDER"], "images", filename
+                os.getcwd(),
+                app.config["UPLOADS_FOLDER"],
+                "images",
+                filename,
             )
             image.save(full_path)
 
@@ -448,3 +488,12 @@ def verify_attendance(event_id):
             user.get("user_id"), event.get("event_id"), document_url, image_url
         )
         return {"message": "Images sent verification is ongoing"}, 201
+
+
+@app.route("/uploaded_file/<filename>")
+def uploaded_file(filename):
+    if filename.endswith(".png") or filename.endswith(".jpeg"):
+        return flask.send_from_directory("uploads\\images", filename)
+
+    if filename.endswith(".docx") or filename.endswith(".pdf"):
+        return flask.send_from_directory("uploads\\documents", filename)
