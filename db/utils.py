@@ -134,7 +134,7 @@ def del_user(username):
         conn.commit()
 
 
-def create_event(title, description, event_date, user_id):
+def create_event(title, description, event_date, end_date, user_id):
     """
     A database utiliy function to create an event, events can only be created by admins
 
@@ -150,8 +150,8 @@ def create_event(title, description, event_date, user_id):
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            """INSERT INTO events (title, description, event_date, created_by) VALUES (%s, %s, %s,%s)""",
-            (title, description, event_date, user_id),
+            """INSERT INTO events (title, description, event_date, end_date, created_by) VALUES (%s, %s, %s, %s, %s)""",
+            (title, description, event_date, end_date, user_id),
         )
         conn.commit()
 
@@ -398,7 +398,7 @@ def set_verification(user_id, event_id, document_url, image_url):
     with connect_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            """INSERT INTO verification (user_id, event_id, document_url, image_url) VALUES (%s, %s, %s, %s)""",
+            """INSERT INTO verification (user_id, event_id, document, image) VALUES (%s, %s, %s, %s)""",
             (user_id, event_id, document_url, image_url),
         )
         conn.commit()
